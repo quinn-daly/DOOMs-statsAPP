@@ -52,43 +52,45 @@ export default function GamesPage() {
   const rosterName = (id: number) => rosters.find(r => r.id === id)?.name || '—';
 
   return (
-    <div className="page">
-      <div className="flex-between mb-16">
-        <h1 className="page-title" style={{ marginBottom: 0 }}>Games</h1>
-        <button className="btn btn-primary" onClick={() => setShowNew(true)}>+ New Game</button>
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">Games</h1>
+        <button className="btn btn-primary btn-sm" onClick={() => setShowNew(true)}>+ New Game</button>
       </div>
 
       {games.length === 0 && (
         <div className="empty-state">
-          <h3>No games yet</h3>
-          <p>Create a roster first, then start a new game.</p>
+          <div>No games yet</div>
+          <div style={{ marginTop: 8 }}>Create a roster first, then start a new game.</div>
         </div>
       )}
 
-      {games.map(g => (
-        <div className="card" key={g.id}>
-          <div className="card-title">{g.title}</div>
-          <div className="card-meta">
-            {g.opponent && <>vs {g.opponent} · </>}
-            {g.tournament && <>{g.tournament} · </>}
-            {rosterName(g.rosterId)} · {new Date(g.dateTime).toLocaleDateString()}
+      <div className="card-list">
+        {games.map(g => (
+          <div className="card card-accent" key={g.id}>
+            <div className="font-doom" style={{ fontSize: '1.2rem', marginBottom: 4 }}>{g.title}</div>
+            <div className="label-mono mb-3">
+              {g.opponent && <>vs {g.opponent} · </>}
+              {g.tournament && <>{g.tournament} · </>}
+              {rosterName(g.rosterId)} · {new Date(g.dateTime).toLocaleDateString()}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn btn-sm btn-primary" onClick={() => nav('/game/' + g.id)}>Tag</button>
+              <button className="btn btn-sm btn-ghost" onClick={() => nav('/export/' + g.id)}>Export</button>
+              <button className="btn btn-sm btn-ghost" onClick={() => handleDuplicate(g.id!)}>Duplicate</button>
+              <button className="btn btn-sm btn-danger" onClick={() => handleDelete(g.id!)}>Delete</button>
+            </div>
           </div>
-          <div className="card-actions">
-            <button className="btn btn-sm btn-primary" onClick={() => nav('/game/' + g.id)}>Tag</button>
-            <button className="btn btn-sm" onClick={() => nav('/export/' + g.id)}>Export</button>
-            <button className="btn btn-sm" onClick={() => handleDuplicate(g.id!)}>Duplicate</button>
-            <button className="btn btn-sm btn-danger" onClick={() => handleDelete(g.id!)}>Delete</button>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {showNew && (
-        <div className="modal-overlay modal-center" onClick={() => setShowNew(false)}>
-          <div className="modal-sheet" onClick={e => e.stopPropagation()}>
-            <h3>New Game</h3>
+        <div className="modal-overlay" onClick={() => setShowNew(false)}>
+          <div className="modal-panel" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">New Game</div>
             {rosters.length === 0 ? (
               <div>
-                <p className="text-muted mb-16">You need a roster first.</p>
+                <p className="text-muted mb-4">You need a roster first.</p>
                 <button className="btn btn-primary btn-block" onClick={() => nav('/rosters')}>Create Roster</button>
               </div>
             ) : (
@@ -121,7 +123,7 @@ export default function GamesPage() {
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleCreate}>Create & Tag</button>
-                  <button className="btn" onClick={() => setShowNew(false)}>Cancel</button>
+                  <button className="btn btn-ghost" onClick={() => setShowNew(false)}>Cancel</button>
                 </div>
               </>
             )}

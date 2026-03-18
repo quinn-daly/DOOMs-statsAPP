@@ -64,72 +64,151 @@ export default function RostersPage() {
   };
 
   return (
-    <div className="page">
-      <h1 className="page-title">Rosters</h1>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <input className="form-input" style={{ flex: 1 }} value={newRosterName} onChange={e => setNewRosterName(e.target.value)} placeholder="New roster name..." onKeyDown={e => e.key === 'Enter' && handleAddRoster()} />
-        <button className="btn btn-primary" onClick={handleAddRoster}>Add</button>
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">Rosters</h1>
       </div>
+
+      {/* Add roster */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <input
+          className="form-input"
+          style={{ flex: 1 }}
+          value={newRosterName}
+          onChange={e => setNewRosterName(e.target.value)}
+          placeholder="New roster name..."
+          onKeyDown={e => e.key === 'Enter' && handleAddRoster()}
+        />
+        <button className="btn btn-primary btn-sm" onClick={handleAddRoster}>Add</button>
+      </div>
+
+      {/* Roster tabs */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
         {rosters.map(r => (
           <div key={r.id} style={{ display: 'flex', gap: 2 }}>
             {editingRoster === r.id ? (
               <div style={{ display: 'flex', gap: 4 }}>
-                <input className="form-input" style={{ width: 120 }} value={editRosterName} onChange={e => setEditRosterName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleUpdateRoster(r.id!)} autoFocus />
-                <button className="btn btn-sm" onClick={() => handleUpdateRoster(r.id!)}>✓</button>
-                <button className="btn btn-sm" onClick={() => setEditingRoster(null)}>✕</button>
+                <input
+                  className="form-input"
+                  style={{ width: 120, minHeight: 36, padding: '6px 10px' }}
+                  value={editRosterName}
+                  onChange={e => setEditRosterName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleUpdateRoster(r.id!)}
+                  autoFocus
+                />
+                <button className="btn btn-sm btn-primary" onClick={() => handleUpdateRoster(r.id!)}>✓</button>
+                <button className="btn btn-sm btn-ghost" onClick={() => setEditingRoster(null)}>✕</button>
               </div>
             ) : (
-              <button className={`btn btn-sm ${selectedRosterId === r.id ? 'btn-primary' : ''}`} onClick={() => setSelectedRosterId(r.id!)} onDoubleClick={() => { setEditingRoster(r.id!); setEditRosterName(r.name); }}>{r.name}</button>
+              <button
+                className={`btn btn-sm ${selectedRosterId === r.id ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => setSelectedRosterId(r.id!)}
+                onDoubleClick={() => { setEditingRoster(r.id!); setEditRosterName(r.name); }}
+              >
+                {r.name}
+              </button>
             )}
           </div>
         ))}
       </div>
+
       {selectedRosterId && (
         <>
-          <div className="flex-between mb-8">
-            <span className="text-muted text-sm">{players.length} players</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <span className="label-mono">{players.length} players</span>
             <div style={{ display: 'flex', gap: 6 }}>
               <button className="btn btn-sm btn-primary" onClick={() => setShowAddPlayer(true)}>+ Player</button>
-              <button className="btn btn-sm btn-danger" onClick={() => handleDeleteRoster(selectedRosterId)}>Delete Roster</button>
+              {rosters.find(r => r.id === selectedRosterId)?.seedKey !== 'doom-seed' && (
+                <button className="btn btn-sm btn-danger" onClick={() => handleDeleteRoster(selectedRosterId)}>Delete Roster</button>
+              )}
             </div>
           </div>
-          {players.length === 0 && <div className="empty-state"><h3>No players</h3><p>Add players to this roster.</p></div>}
-          {players.map(p => (
-            <div className="card" key={p.id} style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <span style={{ fontWeight: 700 }}>{playerLabel(p)}</span>
-                <span className="text-muted text-sm" style={{ marginLeft: 8 }}>({p.lineRole})</span>
-                {!p.active && <span className="text-muted text-sm" style={{ marginLeft: 6 }}>· inactive</span>}
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button className="btn btn-sm" onClick={() => setEditingPlayer({ ...p })}>Edit</button>
-                <button className="btn btn-sm btn-danger" onClick={() => handleDeletePlayer(p.id!)}>✕</button>
-              </div>
+
+          {players.length === 0 && (
+            <div className="empty-state">
+              <div>No players</div>
+              <div style={{ marginTop: 8 }}>Add players to this roster.</div>
             </div>
-          ))}
+          )}
+
+          <div className="card-list">
+            {players.map(p => (
+              <div className="card card-row" key={p.id} style={{ padding: '10px 14px' }}>
+                <div>
+                  <span className="player-tile-name">{playerLabel(p)}</span>
+                  <span className="text-muted text-sm" style={{ marginLeft: 8 }}>({p.lineRole})</span>
+                  {!p.active && <span className="text-muted text-sm" style={{ marginLeft: 6 }}>· inactive</span>}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="btn btn-sm btn-ghost" onClick={() => setEditingPlayer({ ...p })}>Edit</button>
+                  <button className="btn btn-sm btn-danger" onClick={() => handleDeletePlayer(p.id!)}>✕</button>
+                </div>
+              </div>
+            ))}
+          </div>
         </>
       )}
+
+      {/* Add Player Modal */}
       {showAddPlayer && (
-        <div className="modal-overlay modal-center" onClick={() => setShowAddPlayer(false)}>
-          <div className="modal-sheet" onClick={e => e.stopPropagation()}>
-            <h3>Add Player</h3>
-            <div className="form-group"><label className="form-label">Name *</label><input className="form-input" value={playerForm.name} onChange={e => setPlayerForm({ ...playerForm, name: e.target.value })} placeholder="Player name" autoFocus /></div>
-            <div className="form-group"><label className="form-label">Number</label><input className="form-input" value={playerForm.number} onChange={e => setPlayerForm({ ...playerForm, number: e.target.value })} placeholder="#" /></div>
-            <div className="form-group"><label className="form-label">Line Role</label><div style={{ display: 'flex', gap: 6 }}>{LINE_ROLES.map(lr => (<button key={lr} className={`tag-btn ${playerForm.lineRole === lr ? 'selected' : ''}`} style={{ flex: 1 }} onClick={() => setPlayerForm({ ...playerForm, lineRole: lr })}>{lr}</button>))}</div></div>
-            <div style={{ display: 'flex', gap: 8 }}><button className="btn btn-primary" style={{ flex: 1 }} onClick={handleAddPlayer}>Add Player</button><button className="btn" onClick={() => setShowAddPlayer(false)}>Cancel</button></div>
+        <div className="modal-overlay" onClick={() => setShowAddPlayer(false)}>
+          <div className="modal-panel" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">Add Player</div>
+            <div className="form-group">
+              <label className="form-label">Name *</label>
+              <input className="form-input" value={playerForm.name} onChange={e => setPlayerForm({ ...playerForm, name: e.target.value })} placeholder="Player name" autoFocus />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Number</label>
+              <input className="form-input" value={playerForm.number} onChange={e => setPlayerForm({ ...playerForm, number: e.target.value })} placeholder="#" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Line Role</label>
+              <div className="option-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 0 }}>
+                {LINE_ROLES.map(lr => (
+                  <button key={lr} className={`option-btn${playerForm.lineRole === lr ? ' selected' : ''}`} onClick={() => setPlayerForm({ ...playerForm, lineRole: lr })}>{lr}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleAddPlayer}>Add Player</button>
+              <button className="btn btn-ghost" onClick={() => setShowAddPlayer(false)}>Cancel</button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Edit Player Modal */}
       {editingPlayer && (
-        <div className="modal-overlay modal-center" onClick={() => setEditingPlayer(null)}>
-          <div className="modal-sheet" onClick={e => e.stopPropagation()}>
-            <h3>Edit Player</h3>
-            <div className="form-group"><label className="form-label">Name</label><input className="form-input" value={editingPlayer.name} onChange={e => setEditingPlayer({ ...editingPlayer, name: e.target.value })} /></div>
-            <div className="form-group"><label className="form-label">Number</label><input className="form-input" value={editingPlayer.number} onChange={e => setEditingPlayer({ ...editingPlayer, number: e.target.value })} /></div>
-            <div className="form-group"><label className="form-label">Line Role</label><div style={{ display: 'flex', gap: 6 }}>{LINE_ROLES.map(lr => (<button key={lr} className={`tag-btn ${editingPlayer.lineRole === lr ? 'selected' : ''}`} style={{ flex: 1 }} onClick={() => setEditingPlayer({ ...editingPlayer, lineRole: lr })}>{lr}</button>))}</div></div>
-            <div className="form-group"><label className="form-label">Active</label><button className={`tag-btn ${editingPlayer.active ? 'selected' : ''}`} onClick={() => setEditingPlayer({ ...editingPlayer, active: !editingPlayer.active })}>{editingPlayer.active ? 'Active ✓' : 'Inactive'}</button></div>
-            <div style={{ display: 'flex', gap: 8 }}><button className="btn btn-primary" style={{ flex: 1 }} onClick={handleUpdatePlayer}>Save</button><button className="btn" onClick={() => setEditingPlayer(null)}>Cancel</button></div>
+        <div className="modal-overlay" onClick={() => setEditingPlayer(null)}>
+          <div className="modal-panel" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">Edit Player</div>
+            <div className="form-group">
+              <label className="form-label">Name</label>
+              <input className="form-input" value={editingPlayer.name} onChange={e => setEditingPlayer({ ...editingPlayer, name: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Number</label>
+              <input className="form-input" value={editingPlayer.number} onChange={e => setEditingPlayer({ ...editingPlayer, number: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Line Role</label>
+              <div className="option-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 0 }}>
+                {LINE_ROLES.map(lr => (
+                  <button key={lr} className={`option-btn${editingPlayer.lineRole === lr ? ' selected' : ''}`} onClick={() => setEditingPlayer({ ...editingPlayer, lineRole: lr })}>{lr}</button>
+                ))}
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Status</label>
+              <button className={`option-btn${editingPlayer.active ? ' selected' : ''}`} onClick={() => setEditingPlayer({ ...editingPlayer, active: !editingPlayer.active })}>
+                {editingPlayer.active ? 'Active ✓' : 'Inactive'}
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleUpdatePlayer}>Save</button>
+              <button className="btn btn-ghost" onClick={() => setEditingPlayer(null)}>Cancel</button>
+            </div>
           </div>
         </div>
       )}

@@ -72,25 +72,46 @@ export default function ExportPage() {
     input.click();
   };
 
-  if (!game) return <div className="page"><p className="text-muted">Loading...</p></div>;
+  if (!game) return <div className="text-muted" style={{ padding: 16 }}>Loading...</div>;
 
   return (
-    <div className="page">
-      <div className="flex-between mb-16">
-        <h1 className="page-title" style={{ marginBottom: 0 }}>Export</h1>
-        <button className="btn btn-sm" onClick={() => nav('/game/' + gameId)}>← Back to Tag</button>
+    <div>
+      <div className="page-header">
+        <div>
+          <div className="page-eyebrow">Export</div>
+          <h1 className="page-title" style={{ marginBottom: 0 }}>{game.title}</h1>
+        </div>
+        <button className="btn btn-sm btn-ghost" onClick={() => nav('/game/' + gameId)}>← Back</button>
       </div>
-      <div className="card"><div className="card-title">{game.title}</div><div className="card-meta">{game.opponent && 'vs ' + game.opponent + ' · '}{events.length} events</div></div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 }}>
-        <button className="btn btn-primary btn-block" onClick={handleExportCSV} style={{ padding: '16px 24px', fontSize: 16 }}>📊 Export CSV</button>
-        <div className="text-muted text-sm text-center">Downloads a spreadsheet with all event data.</div>
-        <div style={{ height: 16 }} />
-        <button className="btn btn-block" onClick={handleBackupJSON} style={{ padding: '16px 24px', fontSize: 16 }}>💾 Backup JSON</button>
-        <div className="text-muted text-sm text-center">Full backup including roster, players, game, and events.</div>
-        <div style={{ height: 16 }} />
-        <button className="btn btn-block" onClick={handleRestoreJSON} style={{ padding: '16px 24px', fontSize: 16 }}>📂 Restore from JSON</button>
-        <div className="text-muted text-sm text-center">Import a backup file. Will merge with existing data.</div>
+
+      <div className="card mb-4">
+        <div className="label-mono">
+          {game.opponent && <>vs {game.opponent} · </>}
+          {events.length} events
+        </div>
       </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <button className="btn btn-primary btn-block" onClick={handleExportCSV} style={{ minHeight: 56, fontSize: 16 }}>
+          Export CSV
+        </button>
+        <div className="label-mono text-center">Downloads a spreadsheet with all event data.</div>
+
+        <div style={{ height: 8 }} />
+
+        <button className="btn btn-ghost btn-block" onClick={handleBackupJSON} style={{ minHeight: 56, fontSize: 16 }}>
+          Backup JSON
+        </button>
+        <div className="label-mono text-center">Full backup including roster, players, game, and events.</div>
+
+        <div style={{ height: 8 }} />
+
+        <button className="btn btn-ghost btn-block" onClick={handleRestoreJSON} style={{ minHeight: 56, fontSize: 16 }}>
+          Restore from JSON
+        </button>
+        <div className="label-mono text-center">Import a backup file. Will merge with existing data.</div>
+      </div>
+
       {toast && <div className="toast">{toast}</div>}
     </div>
   );

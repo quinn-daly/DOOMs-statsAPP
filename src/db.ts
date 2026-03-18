@@ -15,6 +15,12 @@ class UltimateDB extends Dexie {
       games: '++id, rosterId, updatedAt',
       events: '++id, gameId, [gameId+seq]',
     });
+    this.version(2).stores({
+      rosters: '++id, name, seedKey, updatedAt',
+      players: '++id, rosterId, name, number',
+      games: '++id, rosterId, updatedAt',
+      events: '++id, gameId, [gameId+seq]',
+    });
   }
 }
 
@@ -56,6 +62,24 @@ export async function duplicateGame(id: number): Promise<number> {
   const events = await db.events.where('gameId').equals(id).toArray();
   for (const evt of events) { const { id: _eid, ...rest } = evt; await db.events.add({ ...rest, gameId: newId }); }
   return newId;
+}
+
+export async function seedDoomRoster(): Promise<void> {
+  const existing = await db.rosters.where('seedKey').equals('doom-seed').count();
+  if (existing > 0) return;
+  const now = Date.now();
+  const rosterId = await db.rosters.add({ name: 'DOOM', seedKey: 'doom-seed', createdAt: now, updatedAt: now });
+  const players = [
+    'Charlie Aubitz', 'Christopher (Killy) Kilbridge', 'Dean Lourenco', 'Frank Tan',
+    'Grady Bosch', 'John Vanderwege', 'Julian Bosco', 'Kfir Shoham',
+    'Nicholas Rubino', 'Quinn Daly', 'Risen Zhang', 'Ross DiOrio',
+    'Sawyer Falkenbush', 'Austin Chang', 'Cedar Conly', 'Joseph (Joey) Chura',
+    'Micah Scheinkman', 'Nathan Greenwald', 'Sam Sutton', 'Silas Johnson',
+    'Zane Levy', "Alex O'Neil", 'Casey Kelley', 'Eamon Conneely', 'James Tibola',
+  ];
+  for (const name of players) {
+    await db.players.add({ rosterId, name, number: '', lineRole: 'Both', active: true, createdAt: now, updatedAt: now });
+  }
 }
 
 export async function getEventsForGame(gameId: number): Promise<GameEvent[]> { return db.events.where('gameId').equals(gameId).sortBy('seq'); }

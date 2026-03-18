@@ -5,7 +5,7 @@ export type TurnCause = 'Unforced' | 'Mark Pressure' | 'Downfield Pressure' | 'P
 export type BlockType = 'Layout' | 'Hand' | 'Poach' | 'Deep' | 'Mark' | 'Other';
 export type LineRole = 'O' | 'D' | 'Both';
 
-export interface Roster { id?: number; name: string; createdAt: number; updatedAt: number; }
+export interface Roster { id?: number; name: string; seedKey?: string; createdAt: number; updatedAt: number; }
 export interface Player { id?: number; rosterId: number; name: string; number: string; lineRole: LineRole; active: boolean; createdAt: number; updatedAt: number; }
 export interface Game { id?: number; rosterId: number; title: string; dateTime: string; tournament: string; opponent: string; notes: string; createdAt: number; updatedAt: number; }
 export interface GameEvent { id?: number; gameId: number; seq: number; timestamp: number; action: Action; passerId?: number | null; receiverId?: number | null; defenderId?: number | null; throwType?: ThrowType | null; throwPurpose?: ThrowPurpose | null; turnCause?: TurnCause | null; pressureCreditPlayerId?: number | null; blockType?: BlockType | null; scoredOnDefenderId?: number | null; }
