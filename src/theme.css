@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&display=swap');
+
+:root {
+  --doom-orange:        #c25a00;
+  --doom-orange-bright: #ff8c2a;
+  --doom-orange-dim:    #7a3800;
+  --doom-orange-glow:   rgba(194, 90, 0, 0.15);
+  --doom-purple:        #7a3dbf;
+  --doom-purple-bright: #c07aff;
+  --doom-purple-dim:    #4a1f7a;
+  --doom-purple-glow:   rgba(122, 61, 191, 0.15);
+  --doom-black:         #0a0a0a;
+  --doom-dark:          #111111;
+  --doom-dark-2:        #161616;
+  --doom-dark-3:        #1e1e1e;
+  --doom-steel:         #2a2a2a;
+  --doom-mid:           #444444;
+  --doom-muted:         #666666;
+  --doom-bone:          #f0ede8;
+  --doom-bone-dim:      #a0998f;
+  --page-accent:        var(--doom-orange);
+  --page-accent-bright: var(--doom-orange-bright);
+  --page-accent-dim:    var(--doom-orange-dim);
+  --page-accent-glow:   var(--doom-orange-glow);
+}
+
+.page-purple {
+  --page-accent:        var(--doom-purple);
+  --page-accent-bright: var(--doom-purple-bright);
+  --page-accent-dim:    var(--doom-purple-dim);
+  --page-accent-glow:   var(--doom-purple-glow);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; width: 100%; }
+
+body {
+  background: var(--doom-black);
+  color: var(--doom-bone);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.1em;
+  line-height: 1;
+}
