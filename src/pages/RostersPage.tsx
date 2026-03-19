@@ -1,7 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getAllRosters, createRoster, updateRoster, deleteRoster, getPlayersForRoster, createPlayer, updatePlayer, deletePlayer } from '../db';
 import type { Roster, Player, LineRole } from '../types';
-import { LINE_ROLES, playerLabel } from '../types';
+import { LINE_ROLES } from '../types';
+
+const getInitials = (name: string) => {
+  const words = name.split(' ').filter(w => !w.startsWith('('));
+  return ((words[0]?.[0] || '') + (words[words.length - 1]?.[0] || '')).toUpperCase();
+};
+
+const byLastName = (a: Player, b: Player) => {
+  const last = (n: string) => n.trim().split(' ').pop() || '';
+  return last(a.name).localeCompare(last(b.name));
+};
 
 export default function RostersPage() {
   const [rosters, setRosters] = useState<Roster[]>([]);
@@ -10,15 +20,25 @@ export default function RostersPage() {
   const [newRosterName, setNewRosterName] = useState('');
   const [editingRoster, setEditingRoster] = useState<number | null>(null);
   const [editRosterName, setEditRosterName] = useState('');
+  const [showManage, setShowManage] = useState(false);
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [playerForm, setPlayerForm] = useState({ name: '', number: '', lineRole: 'Both' as LineRole });
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
 
-  const loadRosters = useCallback(async () => { setRosters(await getAllRosters()); }, []);
+  const loadRosters = useCallback(async () => {
+    const r = await getAllRosters();
+    setRosters(r);
+    setSelectedRosterId(prev => {
+      if (prev !== null) return prev;
+      const doom = r.find(roster => roster.seedKey === 'doom-seed');
+      return doom?.id ?? r[0]?.id ?? null;
+    });
+  }, []);
+
   const loadPlayers = useCallback(async () => {
     if (selectedRosterId) {
       const p = await getPlayersForRoster(selectedRosterId);
-      p.sort((a, b) => (parseInt(a.number) || 999) - (parseInt(b.number) || 999));
+      p.sort(byLastName);
       setPlayers(p);
     } else { setPlayers([]); }
   }, [selectedRosterId]);
@@ -63,27 +83,17 @@ export default function RostersPage() {
     if (confirm('Delete this player?')) { await deletePlayer(id); await loadPlayers(); }
   };
 
+  const selectedRoster = rosters.find(r => r.id === selectedRosterId);
+  const isDoomRoster = selectedRoster?.seedKey === 'doom-seed';
+
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">Rosters</h1>
       </div>
 
-      {/* Add roster */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <input
-          className="form-input"
-          style={{ flex: 1 }}
-          value={newRosterName}
-          onChange={e => setNewRosterName(e.target.value)}
-          placeholder="New roster name..."
-          onKeyDown={e => e.key === 'Enter' && handleAddRoster()}
-        />
-        <button className="btn btn-primary btn-sm" onClick={handleAddRoster}>Add</button>
-      </div>
-
-      {/* Roster tabs */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+      {/* Roster tabs + manage toggle */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8, alignItems: 'center' }}>
         {rosters.map(r => (
           <div key={r.id} style={{ display: 'flex', gap: 2 }}>
             {editingRoster === r.id ? (
@@ -110,18 +120,43 @@ export default function RostersPage() {
             )}
           </div>
         ))}
+        <button
+          className="btn btn-sm btn-ghost"
+          style={{ marginLeft: 'auto', opacity: 0.6, fontSize: 12 }}
+          onClick={() => setShowManage(!showManage)}
+        >
+          {showManage ? 'Done' : '⚙ Manage'}
+        </button>
       </div>
+
+      {/* Manage Rosters section */}
+      {showManage && (
+        <div className="card mb-3" style={{ padding: '12px 14px' }}>
+          <div className="label-mono mb-2">Add Roster</div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: selectedRosterId && !isDoomRoster ? 10 : 0 }}>
+            <input
+              className="form-input"
+              style={{ flex: 1 }}
+              value={newRosterName}
+              onChange={e => setNewRosterName(e.target.value)}
+              placeholder="New roster name..."
+              onKeyDown={e => e.key === 'Enter' && handleAddRoster()}
+            />
+            <button className="btn btn-primary btn-sm" onClick={handleAddRoster}>Add</button>
+          </div>
+          {selectedRosterId && !isDoomRoster && (
+            <button className="btn btn-sm btn-danger" onClick={() => handleDeleteRoster(selectedRosterId)}>
+              Delete "{selectedRoster?.name}"
+            </button>
+          )}
+        </div>
+      )}
 
       {selectedRosterId && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <span className="label-mono">{players.length} players</span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button className="btn btn-sm btn-primary" onClick={() => setShowAddPlayer(true)}>+ Player</button>
-              {rosters.find(r => r.id === selectedRosterId)?.seedKey !== 'doom-seed' && (
-                <button className="btn btn-sm btn-danger" onClick={() => handleDeleteRoster(selectedRosterId)}>Delete Roster</button>
-              )}
-            </div>
+            <button className="btn btn-sm btn-primary" onClick={() => setShowAddPlayer(true)}>+ Player</button>
           </div>
 
           {players.length === 0 && (
@@ -132,19 +167,28 @@ export default function RostersPage() {
           )}
 
           <div className="card-list">
-            {players.map(p => (
-              <div className="card card-row" key={p.id} style={{ padding: '10px 14px' }}>
-                <div>
-                  <span className="player-tile-name">{playerLabel(p)}</span>
-                  <span className="text-muted text-sm" style={{ marginLeft: 8 }}>({p.lineRole})</span>
-                  {!p.active && <span className="text-muted text-sm" style={{ marginLeft: 6 }}>· inactive</span>}
+            {players.map(p => {
+              const initials = getInitials(p.name);
+              return (
+                <div className="card card-row" key={p.id} style={{ padding: '4px 14px', minHeight: 48, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {p.avatarFile
+                      ? <img src={`/DOOMs-statsAPP/avatars/${p.avatarFile}`} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} alt={p.name} />
+                      : <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--doom-steel)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 14, color: 'var(--doom-bone)', flexShrink: 0 }}>{initials}</div>
+                    }
+                    <div>
+                      {p.number && <span style={{ color: 'var(--page-accent)', fontFamily: "'Share Tech Mono', monospace", fontSize: 13 }}>#{p.number} </span>}
+                      <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 15, color: 'var(--doom-bone)' }}>{p.name}</span>
+                      {!p.active && <span className="text-muted text-sm" style={{ marginLeft: 6 }}>· inactive</span>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn btn-sm btn-ghost" onClick={() => setEditingPlayer({ ...p })}>Edit</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDeletePlayer(p.id!)}>✕</button>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button className="btn btn-sm btn-ghost" onClick={() => setEditingPlayer({ ...p })}>Edit</button>
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDeletePlayer(p.id!)}>✕</button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}

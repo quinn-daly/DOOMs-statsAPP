@@ -30,7 +30,7 @@ export default function ExportPage() {
 
   const handleExportCSV = () => {
     if (!game) return;
-    const rows = events.map(evt => ({ 'Game Title': game.title, 'Date/Time': game.dateTime, Tournament: game.tournament, Opponent: game.opponent, Seq: evt.seq, Action: evt.action, Passer: pName(evt.passerId), Receiver: pName(evt.receiverId), Defender: pName(evt.defenderId), 'Throw Type': evt.throwType || '', 'Throw Purpose': evt.throwPurpose || '', 'Turn Cause': evt.turnCause || '', 'Pressure Credit Player': pName(evt.pressureCreditPlayerId), 'Block Type': evt.blockType || '', 'Scored On Defender': pName(evt.scoredOnDefenderId) }));
+    const rows = events.map(evt => ({ 'Game Title': game.title, 'Date/Time': game.dateTime, Tournament: game.tournament, Opponent: game.opponent, Seq: evt.seq, Action: evt.action, Passer: pName(evt.passerId), Receiver: pName(evt.receiverId), Defender: pName(evt.defenderId), 'Throw Type': evt.throwType || '', 'Throw Purpose': evt.throwPurpose || '', 'Turn Cause': evt.turnCause || '', 'Pressure Credit Player': pName(evt.pressureCreditPlayerId), 'Pressure Type': evt.pressureType || '', 'Error Type': evt.errorType || '', 'Block Type': evt.blockType || '', 'Scored On Defender': pName(evt.scoredOnDefenderId) }));
     const csv = Papa.unparse(rows);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);

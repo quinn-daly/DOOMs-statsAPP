@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getGame, getPlayersForRoster, getEventsForGame, getNextSeq, addEvent, updateEvent, deleteLastEvent } from '../db';
-import type { Game, Player, GameEvent, Action, ThrowType, ThrowPurpose, TurnCause, BlockType } from '../types';
-import { THROW_TYPES, THROW_PURPOSES, TURN_CAUSES, BLOCK_TYPES, playerLabel } from '../types';
+import type { Game, Player, GameEvent, Action, ThrowType, ThrowPurpose, TurnCause, BlockType, PressureType, ErrorType } from '../types';
+import { THROW_TYPES, THROW_PURPOSES, TURN_CAUSES, BLOCK_TYPES, PRESSURE_TYPES, ERROR_TYPES, playerLabel } from '../types';
 
 type Phase = 'line-select' | 'pick-initial' | 'offense' | 'defense' | 'follow-up';
 
@@ -29,6 +29,8 @@ export default function TagGamePage() {
   const [lastDLine, setLastDLine] = useState<number[]>([]);
   const [discHolderId, setDiscHolderId] = useState<number | null>(null);
   const [score, setScore] = useState<[number, number]>([0, 0]);
+  const [subMode, setSubMode] = useState(false);
+  const [preSubPhase, setPreSubPhase] = useState<Phase>('defense');
 
   const [followUp, setFollowUp] = useState<FollowUpCtx | null>(null);
   const [throwType, setThrowType] = useState<ThrowType | null>(null);
@@ -36,6 +38,8 @@ export default function TagGamePage() {
   const [turnCause, setTurnCause] = useState<TurnCause | null>(null);
   const [blockType, setBlockType] = useState<BlockType | null>(null);
   const [pressurePlayer, setPressurePlayer] = useState<number | null>(null);
+  const [pressureType, setPressureType] = useState<PressureType | null>(null);
+  const [errorType, setErrorType] = useState<ErrorType | null>(null);
   const [scoredOnDefender, setScoredOnDefender] = useState<number | null>(null);
   const [stickyThrow, setStickyThrow] = useState<ThrowType | null>(null);
   const [stickyPurpose, setStickyPurpose] = useState<ThrowPurpose | null>(null);
@@ -74,7 +78,7 @@ export default function TagGamePage() {
 
   const saveEvt = async (d: Partial<GameEvent> & { action: Action }) => {
     const seq = await getNextSeq(gameId);
-    await addEvent({ gameId, seq, timestamp: Date.now(), action: d.action, passerId: d.passerId || null, receiverId: d.receiverId || null, defenderId: d.defenderId || null, throwType: d.throwType || null, throwPurpose: d.throwPurpose || null, turnCause: d.turnCause || null, pressureCreditPlayerId: d.pressureCreditPlayerId || null, blockType: d.blockType || null, scoredOnDefenderId: d.scoredOnDefenderId || null });
+    await addEvent({ gameId, seq, timestamp: Date.now(), action: d.action, passerId: d.passerId || null, receiverId: d.receiverId || null, defenderId: d.defenderId || null, throwType: d.throwType || null, throwPurpose: d.throwPurpose || null, turnCause: d.turnCause || null, pressureCreditPlayerId: d.pressureCreditPlayerId || null, blockType: d.blockType || null, scoredOnDefenderId: d.scoredOnDefenderId || null, pressureType: d.pressureType || null, errorType: d.errorType || null });
     await load();
     showToast('Saved ✓');
   };
@@ -84,8 +88,15 @@ export default function TagGamePage() {
   };
   const confirmLine = () => {
     if (currentLine.length === 0) { showToast('Select at least 1 player'); return; }
+    if (subMode) { setSubMode(false); setPhase(preSubPhase); return; }
     if (isOLine) setLastOLine([...currentLine]); else setLastDLine([...currentLine]);
     setPhase(isOLine ? 'pick-initial' : 'defense');
+  };
+
+  const handleSub = () => {
+    setPreSubPhase(phase);
+    setSubMode(true);
+    setPhase('line-select');
   };
 
   const pickInitial = (pid: number) => { setDiscHolderId(pid); setPhase('offense'); };
@@ -93,23 +104,25 @@ export default function TagGamePage() {
   const openFollowUp = (action: Action, passerId: number | null, receiverId: number | null, defenderId: number | null) => {
     setFollowUp({ action, passerId, receiverId, defenderId });
     setThrowType(stickyThrow); setThrowPurpose(stickyPurpose);
-    setTurnCause(null); setBlockType(null); setPressurePlayer(null); setScoredOnDefender(null);
+    setTurnCause(null); setBlockType(null); setPressurePlayer(null); setScoredOnDefender(null); setPressureType(null); setErrorType(null);
     setPhase('follow-up');
   };
 
-  const handleTheyScored = async () => {
-    await saveEvt({ action: 'Goal', defenderId: -1 });
-    setDiscHolderId(null); setCurrentLine([]); setIsOLine(true); setPhase('line-select');
+  const handleTheyScored = () => {
+    openFollowUp('Goal', null, null, -1);
   };
 
   const handleFollowUpSave = async () => {
     if (!followUp) return;
     const { action, passerId, receiverId, defenderId } = followUp;
-    const isOffenseThrow = action === 'Catch' || action === 'Goal' || action === 'Drop' || (action === 'Throwaway' && !!passerId);
+    const isTheyScored = action === 'Goal' && defenderId === -1;
+    const isOffenseThrow = !isTheyScored && (action === 'Catch' || action === 'Goal' || action === 'Drop' || (action === 'Throwaway' && !!passerId));
     const isDefenseTA = action === 'Throwaway' && !passerId;
-    const needsBlock = action === 'D' || action === 'Callahan';
+    const needsBlock = action === 'D';
     const needsTurn = (action === 'Throwaway' || action === 'Drop') && !isDefenseTA;
 
+    if (action === 'Pressure' && !pressureType) { showToast('Select pressure type'); return; }
+    if (action === 'Error' && !errorType) { showToast('Select error type'); return; }
     if (isOffenseThrow && !throwType) { showToast('Select throw type'); return; }
     if (isOffenseThrow && !throwPurpose) { showToast('Select throw purpose'); return; }
     if (needsTurn && !turnCause) { showToast('Select turn cause'); return; }
@@ -118,16 +131,31 @@ export default function TagGamePage() {
     if (throwType) setStickyThrow(throwType);
     if (throwPurpose) setStickyPurpose(throwPurpose);
 
+    const evtData = {
+      action, passerId, receiverId, defenderId,
+      throwType: isOffenseThrow ? throwType : null,
+      throwPurpose: isOffenseThrow ? throwPurpose : null,
+      turnCause: (needsTurn || isDefenseTA) ? turnCause : null,
+      pressureCreditPlayerId: isDefenseTA ? pressurePlayer : null,
+      blockType: needsBlock ? blockType : null,
+      scoredOnDefenderId: isTheyScored ? scoredOnDefender : null,
+      pressureType: (action === 'Pressure' || isDefenseTA) ? pressureType : null,
+      errorType: action === 'Error' ? errorType : null,
+    };
+
     if (editingEvent) {
-      await updateEvent(editingEvent.id!, { action, passerId, receiverId, defenderId, throwType: isOffenseThrow ? throwType : null, throwPurpose: isOffenseThrow ? throwPurpose : null, turnCause: (needsTurn || isDefenseTA) ? turnCause : null, pressureCreditPlayerId: isDefenseTA ? pressurePlayer : null, blockType: needsBlock ? blockType : null, scoredOnDefenderId: scoredOnDefender });
+      await updateEvent(editingEvent.id!, evtData);
       setEditingEvent(null); setFollowUp(null); await load();
-      setPhase(discHolderId ? 'offense' : 'defense');
+      if (action === 'Pressure' || action === 'Error') setPhase('defense');
+      else setPhase(discHolderId ? 'offense' : 'defense');
       showToast('Updated ✓'); return;
     }
 
-    await saveEvt({ action, passerId, receiverId, defenderId, throwType: isOffenseThrow ? throwType : null, throwPurpose: isOffenseThrow ? throwPurpose : null, turnCause: (needsTurn || isDefenseTA) ? turnCause : null, pressureCreditPlayerId: isDefenseTA ? pressurePlayer : null, blockType: needsBlock ? blockType : null, scoredOnDefenderId: scoredOnDefender });
+    await saveEvt(evtData);
 
-    if (action === 'Catch') { setDiscHolderId(receiverId); setPhase('offense'); }
+    if (action === 'Pressure' || action === 'Error') { setFollowUp(null); setPhase('defense'); }
+    else if (isTheyScored) { setDiscHolderId(null); setCurrentLine([]); setIsOLine(true); setFollowUp(null); setPhase('line-select'); }
+    else if (action === 'Catch') { setDiscHolderId(receiverId); setPhase('offense'); }
     else if (action === 'Goal' && passerId) { setDiscHolderId(null); setCurrentLine([]); setIsOLine(false); setPhase('line-select'); }
     else if (action === 'Drop' || (action === 'Throwaway' && !!passerId)) { setDiscHolderId(null); setPhase('defense'); }
     else if (action === 'D') { setDiscHolderId(null); setPhase('pick-initial'); }
@@ -139,7 +167,10 @@ export default function TagGamePage() {
 
   const cancelFollowUp = () => {
     if (editingEvent) { setEditingEvent(null); setFollowUp(null); setPhase(discHolderId ? 'offense' : 'defense'); return; }
+    const act = followUp?.action;
     setFollowUp(null);
+    if (act === 'Pressure' || act === 'Error') { setPhase('defense'); return; }
+    if (act === 'Goal' && followUp?.defenderId === -1) { setPhase('defense'); return; }
     setPhase(followUp?.passerId ? 'offense' : 'defense');
   };
 
@@ -171,11 +202,13 @@ export default function TagGamePage() {
     switch (evt.action) {
       case 'Catch': p.push(pName(evt.passerId) + ' → ' + pName(evt.receiverId)); break;
       case 'Goal': p.push(pName(evt.passerId) + ' → ' + pName(evt.receiverId) + ' GOAL'); break;
-      case 'Throwaway': p.push(evt.passerId ? pName(evt.passerId) + ' throwaway' : 'Opp. throwaway'); break;
+      case 'Throwaway': p.push(evt.passerId ? pName(evt.passerId) + ' throwaway' : 'Opp. throwaway'); if (!evt.passerId && evt.pressureType) p.push('Forced: ' + evt.pressureType); break;
       case 'Drop': p.push(pName(evt.receiverId) + ' drop'); break;
       case 'D': p.push('D by ' + pName(evt.defenderId)); break;
       case 'Callahan': p.push('Callahan ' + pName(evt.defenderId)); break;
       case 'Pull': p.push('Pull ' + pName(evt.defenderId)); break;
+      case 'Pressure': p.push(pName(evt.defenderId)); if (evt.pressureType) p.push(evt.pressureType); break;
+      case 'Error': p.push(pName(evt.defenderId)); if (evt.errorType) p.push(evt.errorType); break;
     }
     if (evt.throwType) p.push(evt.throwType);
     if (evt.blockType) p.push(evt.blockType);
@@ -188,15 +221,18 @@ export default function TagGamePage() {
     setThrowType(evt.throwType || null); setThrowPurpose(evt.throwPurpose || null);
     setTurnCause(evt.turnCause || null); setBlockType(evt.blockType || null);
     setPressurePlayer(evt.pressureCreditPlayerId || null); setScoredOnDefender(evt.scoredOnDefenderId || null);
+    setPressureType(evt.pressureType || null); setErrorType(evt.errorType || null);
     setPhase('follow-up');
   };
 
   // Derived state for follow-up sheet
   const fuAction = followUp?.action;
   const fuPasserId = followUp?.passerId;
-  const isOffThrow = !!(fuAction && (fuAction === 'Catch' || fuAction === 'Goal' || fuAction === 'Drop' || (fuAction === 'Throwaway' && !!fuPasserId)));
+  const fuDefenderId = followUp?.defenderId;
+  const isTheyScored = fuAction === 'Goal' && fuDefenderId === -1;
+  const isOffThrow = !!(fuAction && !isTheyScored && (fuAction === 'Catch' || fuAction === 'Goal' || fuAction === 'Drop' || (fuAction === 'Throwaway' && !!fuPasserId)));
   const isDefTA = fuAction === 'Throwaway' && !fuPasserId;
-  const needsBlk = !!(fuAction && (fuAction === 'D' || fuAction === 'Callahan'));
+  const needsBlk = fuAction === 'D';
   const needsTrn = !!(fuAction && (fuAction === 'Throwaway' || fuAction === 'Drop') && !isDefTA);
   const showPressure = isDefTA;
 
@@ -260,8 +296,8 @@ export default function TagGamePage() {
             </div>
             <div style={{ flex: 1 }} />
             <button className="btn btn-sm" onClick={confirmLine} disabled={currentLine.length === 0}
-              style={{ borderColor: 'var(--doom-purple-bright)', color: 'var(--doom-purple-bright)', padding: '0 120px', alignSelf: 'stretch', fontSize: '1rem', letterSpacing: '0.25em', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700 }}>
-              Confirm Line
+              style={{ borderColor: subMode ? 'var(--doom-orange-bright)' : 'var(--doom-purple-bright)', color: subMode ? 'var(--doom-orange-bright)' : 'var(--doom-purple-bright)', padding: '0 120px', alignSelf: 'stretch', fontSize: '1rem', letterSpacing: '0.25em', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700 }}>
+              {subMode ? 'Confirm Sub' : 'Confirm Line'}
             </button>
             <div style={{ flex: 1 }} />
             <button className="btn btn-sm btn-ghost" onClick={() => setIsOLine(!isOLine)}>
@@ -269,18 +305,33 @@ export default function TagGamePage() {
             </button>
           </div>
 
-          {/* Roster grid */}
-          <div className="player-grid">
-            {allPlayers.map(p => {
+          {/* Player list */}
+          <div className="card-list">
+            {[...allPlayers].sort((a, b) => {
+              const last = (n: string) => n.trim().split(' ').pop() || '';
+              return last(a.name).localeCompare(last(b.name));
+            }).map(p => {
               const on = currentLine.includes(p.id!);
+              const words = p.name.split(' ').filter(w => !w.startsWith('('));
+              const initials = ((words[0]?.[0] || '') + (words[words.length - 1]?.[0] || '')).toUpperCase();
               return (
-                <button key={p.id} className={`player-tile${on ? ' selected' : ''}`} onClick={() => togglePlayer(p.id!)}>
-                  <div className="player-tile-number">{p.number}</div>
-                  <div className="player-tile-info">
-                    <div className="player-tile-name">{p.name}</div>
-                    <div className="player-tile-role">{p.lineRole !== 'Both' ? p.lineRole : ''}</div>
+                <div
+                  key={p.id}
+                  className={`card card-row${on ? ' card-accent' : ''}`}
+                  style={{ padding: '4px 14px', minHeight: 48, cursor: 'pointer', ...(on ? { borderColor: 'var(--page-accent)' } : {}) }}
+                  onClick={() => togglePlayer(p.id!)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {p.avatarFile
+                      ? <img src={`/DOOMs-statsAPP/avatars/${p.avatarFile}`} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} alt={p.name} />
+                      : <div style={{ width: 40, height: 40, borderRadius: '50%', background: on ? 'var(--page-accent)' : 'var(--doom-steel)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 14, color: 'var(--doom-bone)', flexShrink: 0 }}>{initials}</div>
+                    }
+                    <div>
+                      {p.number && <span style={{ color: 'var(--page-accent)', fontFamily: "'Share Tech Mono', monospace", fontSize: 13 }}>#{p.number} </span>}
+                      <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 15, color: 'var(--doom-bone)' }}>{p.name}</span>
+                    </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -365,9 +416,11 @@ export default function TagGamePage() {
                   <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 15 }}>{p.name}</span>
                   <span className="text-muted" style={{ fontSize: 12, marginLeft: 6 }}>#{p.number}</span>
                 </div>
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <button className="btn btn-sm" style={{ background: 'var(--btn-d-bg)', borderColor: 'var(--btn-d-border)', color: 'var(--btn-d-text)' }} onClick={() => openFollowUp('D', null, null, p.id!)}>D</button>
                   <button className="btn btn-sm" style={{ background: 'var(--btn-callahan-bg)', borderColor: 'var(--btn-callahan-border)', color: 'var(--btn-callahan-text)' }} onClick={() => openFollowUp('Callahan', null, p.id!, p.id!)}>Callahan</button>
+                  <button className="btn btn-sm" style={{ borderColor: '#22c55e', color: '#22c55e' }} onClick={() => openFollowUp('Pressure', null, null, p.id!)}>Pressure</button>
+                  <button className="btn btn-sm btn-danger" onClick={() => openFollowUp('Error', null, null, p.id!)}>Error</button>
                 </div>
               </div>
             ))}
@@ -385,14 +438,17 @@ export default function TagGamePage() {
         <div className="sheet-overlay" onClick={cancelFollowUp}>
           <div className="sheet-panel" onClick={e => e.stopPropagation()}>
             <div className="sheet-handle" />
-            <div className="sheet-title">{editingEvent ? 'Edit: ' : ''}{followUp.action}</div>
+            <div className="sheet-title">
+              {editingEvent ? 'Edit: ' : ''}
+              {isTheyScored ? 'They Scored' : followUp.action}
+            </div>
 
             {/* Summary */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
               {followUp.passerId && followUp.passerId > 0 && <span className="badge badge-orange">{pName(followUp.passerId)}</span>}
               {followUp.passerId && followUp.receiverId && followUp.receiverId > 0 && <span className="text-muted">→</span>}
               {followUp.receiverId && followUp.receiverId > 0 && <span className="badge badge-orange">{pName(followUp.receiverId)}</span>}
-              {followUp.defenderId && followUp.defenderId > 0 && <span className="badge badge-purple">D: {pName(followUp.defenderId)}</span>}
+              {followUp.defenderId && followUp.defenderId > 0 && <span className="badge badge-purple">{fuAction === 'Pressure' ? '▲ ' : fuAction === 'Error' ? '✕ ' : 'D: '}{pName(followUp.defenderId)}</span>}
             </div>
 
             {/* Throw Type + Purpose */}
@@ -421,15 +477,33 @@ export default function TagGamePage() {
               </>
             )}
 
-            {/* Pressure Credit — defender who forced opponent turnover */}
+            {/* Pressure Type — for standalone Pressure events */}
+            {fuAction === 'Pressure' && (
+              <>
+                <div className="label-accent mb-2">Pressure Type *</div>
+                <div className="option-grid">
+                  {PRESSURE_TYPES.map(t => <button key={t} className={`option-btn${pressureType === t ? ' selected' : ''}`} onClick={() => setPressureType(t)}>{t}</button>)}
+                </div>
+              </>
+            )}
+
+            {/* Error Type — for standalone Error events */}
+            {fuAction === 'Error' && (
+              <>
+                <div className="label-accent mb-2">Error Type *</div>
+                <div className="option-grid">
+                  {ERROR_TYPES.map(t => <button key={t} className={`option-btn${errorType === t ? ' selected' : ''}`} onClick={() => setErrorType(t)}>{t}</button>)}
+                </div>
+              </>
+            )}
+
+            {/* Pressure Credit — defender who forced opponent throwaway */}
             {showPressure && (
               <>
-                <div className="label-accent mb-2">Pressure Credit (optional)</div>
+                <div className="label-accent mb-2">Was this forced? (optional)</div>
                 <div className="option-grid">
-                  <button className={`option-btn${!pressurePlayer ? ' selected' : ''}`} onClick={() => setPressurePlayer(null)}>None</button>
-                  {linePlayers.map(p => (
-                    <button key={p.id} className={`option-btn${pressurePlayer === p.id ? ' selected' : ''}`} onClick={() => setPressurePlayer(p.id!)}>{playerLabel(p)}</button>
-                  ))}
+                  <button className={`option-btn${!pressureType ? ' selected' : ''}`} onClick={() => setPressureType(null)}>Not forced</button>
+                  {PRESSURE_TYPES.map(t => <button key={t} className={`option-btn${pressureType === t ? ' selected' : ''}`} onClick={() => setPressureType(t)}>{t}</button>)}
                 </div>
               </>
             )}
@@ -444,13 +518,13 @@ export default function TagGamePage() {
               </>
             )}
 
-            {/* Scored On Defender */}
-            {followUp.action === 'Goal' && followUp.passerId && (
+            {/* Scored On — which of our defenders got beaten (only when they score) */}
+            {isTheyScored && (
               <>
-                <div className="label-accent mb-2">Scored On Defender (optional)</div>
+                <div className="label-accent mb-2">Which defender got scored on? (optional)</div>
                 <div className="option-grid">
                   <button className={`option-btn${!scoredOnDefender ? ' selected' : ''}`} onClick={() => setScoredOnDefender(null)}>None</button>
-                  {allPlayers.map(p => (
+                  {linePlayers.map(p => (
                     <button key={p.id} className={`option-btn${scoredOnDefender === p.id ? ' selected' : ''}`} onClick={() => setScoredOnDefender(p.id!)}>{playerLabel(p)}</button>
                   ))}
                 </div>
@@ -474,7 +548,8 @@ export default function TagGamePage() {
               {events.length > 0 && (
                 <button className="btn btn-sm btn-danger" onClick={handleUndo}>Undo ↩</button>
               )}
-              <button className="btn btn-sm btn-ghost" onClick={() => setPhase('line-select')}>Line</button>
+              <button className="btn btn-sm btn-ghost" onClick={handleSub}>SUB</button>
+              <button className="btn btn-sm btn-ghost" onClick={() => { setSubMode(false); setPhase('line-select'); }}>Line</button>
             </div>
           </div>
           {reversedEvents.map(evt => (
