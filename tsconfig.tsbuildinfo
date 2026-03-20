@@ -1,1 +1,1 @@
-{"root":["./src/actionicons.tsx","./src/app.tsx","./src/doomlogo.tsx","./src/db.ts","./src/main.tsx","./src/types.ts","./src/pages/exportpage.tsx","./src/pages/gamespage.tsx","./src/pages/rosterspage.tsx","./src/pages/taggamepage.tsx"],"version":"5.6.3"}
+{"root":["./src/ActionIcons.tsx","./src/App.tsx","./src/DoomLogo.tsx","./src/db.ts","./src/main.tsx","./src/types.ts","./src/pages/ExportPage.tsx","./src/pages/GamesPage.tsx","./src/pages/RostersPage.tsx","./src/pages/TagGamePage.tsx"],"version":"5.6.3"}
