@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(cp -r \"d:/DOOM/DOOMs-statsAPP/dist/.\" \"d:/DOOM/gh-pages-deploy/\")",
+      "Read(//d/DOOM/gh-pages-deploy/**)"
     ]
   }
 }

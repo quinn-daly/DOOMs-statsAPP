@@ -139,7 +139,7 @@ export default function TagGamePage() {
       pressureCreditPlayerId: isDefenseTA ? pressurePlayer : null,
       blockType: needsBlock ? blockType : null,
       scoredOnDefenderId: isTheyScored ? scoredOnDefender : null,
-      pressureType: (action === 'Pressure' || isDefenseTA) ? pressureType : null,
+      pressureType: action === 'Pressure' ? pressureType : null,
       errorType: action === 'Error' ? errorType : null,
     };
 
@@ -282,31 +282,37 @@ export default function TagGamePage() {
           </div>
 
           {/* Quick actions */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {isOLine && lastOLine.length > 0 && (
-                <button className="btn btn-sm btn-primary" onClick={() => setCurrentLine([...lastOLine])}>Last O-Line</button>
-              )}
-              {!isOLine && lastDLine.length > 0 && (
-                <button className="btn btn-sm" style={{ color: 'var(--doom-purple-bright)', borderColor: 'var(--doom-purple)' }} onClick={() => setCurrentLine([...lastDLine])}>Last D-Line</button>
-              )}
-              {currentLine.length > 0 && (
-                <button className="btn btn-sm btn-ghost" onClick={() => setCurrentLine([])}>Clear</button>
-              )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+            {/* Row 1: Last line + Clear */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              <div>
+                {isOLine && lastOLine.length > 0 && (
+                  <button className="btn btn-sm btn-primary" style={{ width: '100%' }} onClick={() => setCurrentLine([...lastOLine])}>Last O-Line</button>
+                )}
+                {!isOLine && lastDLine.length > 0 && (
+                  <button className="btn btn-sm" style={{ width: '100%', color: 'var(--doom-purple-bright)', borderColor: 'var(--doom-purple)' }} onClick={() => setCurrentLine([...lastDLine])}>Last D-Line</button>
+                )}
+              </div>
+              <div>
+                {currentLine.length > 0 && (
+                  <button className="btn btn-sm btn-ghost" style={{ width: '100%' }} onClick={() => setCurrentLine([])}>Clear</button>
+                )}
+              </div>
             </div>
-            <div style={{ flex: 1 }} />
-            <button className="btn btn-sm" onClick={confirmLine} disabled={currentLine.length === 0}
-              style={{ borderColor: subMode ? 'var(--doom-orange-bright)' : 'var(--doom-purple-bright)', color: subMode ? 'var(--doom-orange-bright)' : 'var(--doom-purple-bright)', padding: '0 120px', alignSelf: 'stretch', fontSize: '1rem', letterSpacing: '0.25em', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700 }}>
-              {subMode ? 'Confirm Sub' : 'Confirm Line'}
-            </button>
-            <div style={{ flex: 1 }} />
-            <button className="btn btn-sm btn-ghost" onClick={() => setIsOLine(!isOLine)}>
-              Switch to {isOLine ? 'D' : 'O'}
-            </button>
+            {/* Row 2: Switch + Confirm */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              <button className="btn btn-sm btn-ghost" style={{ width: '100%' }} onClick={() => setIsOLine(!isOLine)}>
+                Switch to {isOLine ? 'D' : 'O'}
+              </button>
+              <button className="btn btn-sm" onClick={confirmLine} disabled={currentLine.length === 0}
+                style={{ width: '100%', borderColor: subMode ? 'var(--doom-orange-bright)' : 'var(--doom-purple-bright)', color: subMode ? 'var(--doom-orange-bright)' : 'var(--doom-purple-bright)', fontSize: '1rem', letterSpacing: '0.25em', fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700 }}>
+                {subMode ? 'Confirm Sub' : 'Confirm'}
+              </button>
+            </div>
           </div>
 
           {/* Player list */}
-          <div className="card-list">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
             {[...allPlayers].sort((a, b) => {
               const last = (n: string) => n.trim().split(' ').pop() || '';
               return last(a.name).localeCompare(last(b.name));
@@ -418,9 +424,9 @@ export default function TagGamePage() {
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <button className="btn btn-sm" style={{ background: 'var(--btn-d-bg)', borderColor: 'var(--btn-d-border)', color: 'var(--btn-d-text)' }} onClick={() => openFollowUp('D', null, null, p.id!)}>D</button>
-                  <button className="btn btn-sm" style={{ background: 'var(--btn-callahan-bg)', borderColor: 'var(--btn-callahan-border)', color: 'var(--btn-callahan-text)' }} onClick={() => openFollowUp('Callahan', null, p.id!, p.id!)}>Callahan</button>
-                  <button className="btn btn-sm" style={{ borderColor: '#22c55e', color: '#22c55e' }} onClick={() => openFollowUp('Pressure', null, null, p.id!)}>Pressure</button>
-                  <button className="btn btn-sm btn-danger" onClick={() => openFollowUp('Error', null, null, p.id!)}>Error</button>
+                  <button className="btn btn-sm" style={{ background: 'var(--btn-callahan-bg)', borderColor: 'var(--btn-callahan-border)', color: 'var(--btn-callahan-text)' }} onClick={() => openFollowUp('Callahan', null, p.id!, p.id!)}>CAL</button>
+                  <button className="btn btn-sm" style={{ borderColor: '#22c55e', color: '#22c55e' }} onClick={() => openFollowUp('Pressure', null, null, p.id!)}>PRES</button>
+                  <button className="btn btn-sm btn-danger" onClick={() => openFollowUp('Error', null, null, p.id!)}>ERR</button>
                 </div>
               </div>
             ))}
@@ -497,13 +503,13 @@ export default function TagGamePage() {
               </>
             )}
 
-            {/* Pressure Credit — defender who forced opponent throwaway */}
+            {/* Pressure Credit — player from current line who forced the opponent throwaway */}
             {showPressure && (
               <>
-                <div className="label-accent mb-2">Was this forced? (optional)</div>
+                <div className="label-accent mb-2">Pressure Credit (optional)</div>
                 <div className="option-grid">
-                  <button className={`option-btn${!pressureType ? ' selected' : ''}`} onClick={() => setPressureType(null)}>Not forced</button>
-                  {PRESSURE_TYPES.map(t => <button key={t} className={`option-btn${pressureType === t ? ' selected' : ''}`} onClick={() => setPressureType(t)}>{t}</button>)}
+                  <button className={`option-btn${pressurePlayer === null ? ' selected' : ''}`} onClick={() => setPressurePlayer(null)}>None</button>
+                  {currentLine.map(pid => { const p = playerById(pid); return p ? <button key={pid} className={`option-btn${pressurePlayer === pid ? ' selected' : ''}`} onClick={() => setPressurePlayer(pid)}>{p.name}</button> : null; })}
                 </div>
               </>
             )}

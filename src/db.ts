@@ -70,10 +70,10 @@ export async function seedDoomRoster(): Promise<void> {
   const now = Date.now();
   const rosterId = await db.rosters.add({ name: 'DOOM', seedKey: 'doom-seed', createdAt: now, updatedAt: now });
   const players = [
-    'Charlie Aubitz', 'Christopher (Killy) Kilbridge', 'Dean Lourenco', 'Frank Tan',
+    'Charlie Aubitz', 'Chris Killy', 'Dean Lourenco', 'Frank Tan',
     'Grady Bosch', 'John Vanderwege', 'Julian Bosco', 'Kfir Shoham',
     'Nicholas Rubino', 'Quinn Daly', 'Risen Zhang', 'Ross DiOrio',
-    'Sawyer Falkenbush', 'Austin Chang', 'Cedar Conly', 'Joseph (Joey) Chura',
+    'Sawyer Falkenbush', 'Austin Chang', 'Cedar Conly', 'Joey Chura',
     'Micah Scheinkman', 'Nathan Greenwald', 'Sam Sutton', 'Silas Johnson',
     'Zane Levy', "Alex O'Neil", 'Casey Kelley', 'Eamon Conneely', 'James Tibola',
   ];
